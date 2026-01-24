@@ -6,7 +6,7 @@ from frappe import _
 
 def get_base_url():
 	url = "https://frappecloud.com"
-	if frappe.conf.developer_mode and frappe.conf.get("fc_base_url"):
+	if frappe.conf.get("fc_base_url"):
 		url = frappe.conf.get("fc_base_url")
 	return url
 
