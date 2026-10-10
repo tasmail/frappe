@@ -678,6 +678,22 @@ frappe.views.QueryReport = class QueryReport extends frappe.views.BaseList {
 
 				this.execution_time = data.execution_time || 0.1;
 
+				this.snapshot_report = data.snapshot_report;
+				this.snapshot_at = data.snapshot_at;
+				if (this.snapshot_report) {
+					if (data.result.length > 0) {
+						let diff = frappe.datetime.comment_when(this.snapshot_at);
+						let pretty_diff = `<span style="color:var(--red-600)">${diff}</span>`;
+						this.show_status(`
+						<div class="indicator orange pl-1">
+							<span>
+								${__("This is a snapshot report generated {0}.", [pretty_diff])}
+							</span>
+						</div>
+					`);
+					}
+				}
+
 				if (data.custom_filters) {
 					this.set_filters(data.custom_filters);
 					this.previous_filters = data.custom_filters;
@@ -977,6 +993,11 @@ frappe.views.QueryReport = class QueryReport extends frappe.views.BaseList {
 				"This report contains {0} rows and is too big to display in browser, you can {1} this report instead.",
 				[cstr(format_number(data.length, null, 0)).bold(), __("export").bold()]
 			);
+
+			if (this.datatable) {
+				this.datatable.destroy();
+				this.datatable = null;
+			}
 
 			this.toggle_message(true, `${frappe.utils.icon("solid-warning")} ${msg}`);
 			return;
@@ -1527,12 +1548,11 @@ frappe.views.QueryReport = class QueryReport extends frappe.views.BaseList {
 		return print_settings.columns?.length || !custom_format ? "print_grid" : custom_format;
 	}
 
-	async get_report_print_format(report_name) {
-		const filters = {
-			name: report_name,
-			disabled: 0,
-		};
-		const r = await frappe.db.get_value("Print Format", filters, ["html", "css"]);
+	async get_report_print_format(print_format) {
+		const r = await frappe.call({
+			method: "frappe.desk.query_report.get_print_format_data",
+			args: { print_format },
+		});
 		if (r && r.message && r.message.html) {
 			const css = r.message.css || "";
 			const html = r.message.html || "";
@@ -1804,7 +1824,9 @@ frappe.views.QueryReport = class QueryReport extends frappe.views.BaseList {
 						(print_settings) => this.pdf_report(print_settings),
 						this.report_doc.letter_head,
 						this.get_visible_columns(),
-						true
+						true,
+						"PDF Settings",
+						this.report_doc.default_print_format
 					);
 
 					this.add_portrait_warning(dialog);

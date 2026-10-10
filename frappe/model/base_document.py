@@ -122,6 +122,7 @@ class BaseDocument:
 			"_doc_before_save",
 			"_table_fieldnames",
 			"_reserved_keywords",
+			"_action",
 			"permitted_fieldnames",
 			"dont_update_if_missing",
 		)
@@ -403,6 +404,9 @@ class BaseDocument:
 				elif df.fieldtype in float_like_fields and not isinstance(value, float):
 					value = flt(value)
 
+				elif df.fieldtype == "Read Only" and not isinstance(value, str):
+					value = cstr(value)
+
 				elif (df.fieldtype in datetime_fields and value == "") or (
 					getattr(df, "unique", False) and cstr(value).strip() == ""
 				):
@@ -459,7 +463,7 @@ class BaseDocument:
 		return frappe.local.valid_columns[self.doctype]
 
 	def is_new(self) -> bool:
-		return self.get("__islocal")
+		return bool(self.get("__islocal"))
 
 	@property
 	def docstatus(self) -> DocStatus:

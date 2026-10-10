@@ -1,3 +1,5 @@
+from typing import Any
+
 import requests
 
 import frappe
@@ -42,13 +44,20 @@ def get_headers():
 def current_site_info():
 	from frappe.utils import cint
 
+	frappe.only_for("System Manager")
+
 	cache_key = f"fc_current_site_info:{frappe.local.site}"
 	cached_data = frappe.cache().get_value(cache_key)
 	if cached_data:
 		return cached_data
 
 	res = {}
-	request = requests.post(f"{get_base_url()}/api/method/press.saas.api.site.info", headers=get_headers())
+	try:
+		request = requests.post(
+			f"{get_base_url()}/api/method/press.saas.api.site.info", headers=get_headers(), timeout=(5, 10)
+		)
+	except requests.RequestException:
+		return None
 	if request.status_code == 200:
 		res = request.json().get("message")
 		if not res or not isinstance(res, dict):
@@ -67,13 +76,14 @@ def current_site_info():
 
 
 @frappe.whitelist()
-def api(method, data=None):
+def api(method: str, data: str | dict[str, Any] | None = None):
 	if data is None:
 		data = {}
 	request = requests.post(
 		f"{get_base_url()}/api/method/press.saas.api.{method}",
 		headers=get_headers(),
 		json=data,
+		timeout=(5, 10),
 	)
 	if request.status_code == 200:
 		return request.json().get("message")
@@ -94,6 +104,7 @@ def send_verification_code():
 		f"{get_base_url()}/api/method/press.api.developer.saas.send_verification_code",
 		headers=get_headers(),
 		json={"domain": get_site_name()},
+		timeout=(5, 10),
 	)
 	if request.status_code == 200:
 		return request.json().get("message")
@@ -107,6 +118,7 @@ def verify_verification_code(verification_code: str, route: str):
 		f"{get_base_url()}/api/method/press.api.developer.saas.verify_verification_code",
 		headers=get_headers(),
 		json={"domain": get_site_name(), "verification_code": verification_code, "route": route},
+		timeout=(5, 10),
 	)
 
 	if request.status_code == 200:
