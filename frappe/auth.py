@@ -128,6 +128,9 @@ class LoginManager:
 				self.set_user_info()
 
 	def login(self):
+		from frappe.utils.security_log import validate_login_route
+
+		validate_login_route()
 		if frappe.get_system_settings("disable_user_pass_login"):
 			frappe.throw(_("Login with username and password is not allowed."), frappe.AuthenticationError)
 
@@ -311,6 +314,9 @@ class LoginManager:
 			self.fail("Incorrect password", user=user)
 
 	def fail(self, message, user=None):
+		from frappe.utils.security_log import log_failed_login
+
+		log_failed_login()
 		if not user:
 			user = _("Unknown User")
 		frappe.local.response["message"] = message
